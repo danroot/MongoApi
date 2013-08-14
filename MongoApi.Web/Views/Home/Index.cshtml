@@ -1,0 +1,15 @@
+﻿@{
+    ViewBag.Title = "MongoApi Examples";
+}
+<h2>MongoApi Examples</h2>
+<p>
+    These examples illustrate a simple todo list against the same untyped MongoApi using a variety of 
+    javascript frameworks. The api is configured so that only items for the current authenticated user (@User.Identity.Name) are exposed, and all inserted and updated
+    items are for the current user.  (Note this means that Windows or Forms auth will need to be enabled and the
+    user logged in for these to work properly.)
+</p>
+<ul>
+    <li>@Html.ActionLink("Simple untyped user-constrained todo list (jQuery)", "SimpleUserTodo")</li>
+    <li>@Html.ActionLink("Simple untyped user-constrained todo list (Knockout + jQuery)", "SimpleUserTodoKO")</li>
+    <li>@Html.ActionLink("Simple untyped user-constrained todo list (Angular)", "SimpleUserTodoNG")</li>
+</ul>
