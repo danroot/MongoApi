@@ -148,10 +148,9 @@ namespace MongoApi
         {
             if (!IsAllowedOperation(database, collection, "add")) throw new SecurityException("Add is not allowed for this database and collection.  A developer should explicity allow this by calling this.Allow in the constructor.");
 
-            var document = Request.GetSubmittedBsonDocument();
-
+            var document = Request.GetSubmittedBsonDocument();            
             document = ApplyInterceptsFor(database, collection, "add", document);
-
+            document.Remove("_id");
             var db = GetCollectionForRequest(database, collection);
 
             var response = db.Save(document);

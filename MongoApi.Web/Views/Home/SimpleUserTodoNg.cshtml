@@ -40,6 +40,7 @@
         };
 
         $scope.delete = function (item, $index) {
+            delete item['$$hashKey']; //Angular adds this.  Yuck.
             $http.delete($scope.endpointUrl, {data:JSON.stringify(item)})
                 .success(function () {
                     $scope.items.splice($index,1);

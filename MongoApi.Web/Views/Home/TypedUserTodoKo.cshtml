@@ -1,0 +1,72 @@
+﻿@Html.ActionLink("Home", "Index")
+<h1>Simple typed user-constrained todo list (KnockoutJS + jQuery)</h1>
+<p>
+    This page illustrates a simple todo list against an typed MongoDB Api that
+            is constrained so that only items for the current authenticated user (@User.Identity.Name) are exposed, and all inserted and updated
+            items are for the current user.  KnockoutJS is used as the binding framework, and jQuery for Ajax.
+</p>
+<div>
+    <input type="text" id="uiNewTodo" placeholder="Todo item" data-bind="event: { keyup: newItemKeypress }, value: newItemText" />
+    <input type="text" placeholder="Priority" data-bind="event: { keyup: newItemKeypress }, value: newItemPriority" />
+    <input type="date" data-bind="event: { keyup: newItemKeypress }, value: newItemDue" />
+
+    <ul id="uiTodoItems" data-bind="foreach: items">
+        <li data-bind="click: $root.deleteItem, text: $root.getText($data)"></li>
+    </ul>
+</div>
+<script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+<script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/knockout/knockout-2.2.1.js"></script>
+<script type="text/javascript">
+    function ViewModel() {
+        var self = this;
+        this.endpointUrl = '@(Url.Content("~"))typed/todos';
+        this.newItemText = ko.observable('');
+        this.newItemPriority = ko.observable(1);
+        this.newItemDue = ko.observable('');
+        this.items = ko.observableArray([]);
+        this.getText = function(data) {
+            var result = data.Priority + ' - ' +data.Title;
+            if (data.DueDate != null) result = result + ' - ' + new Date(data.DueDate.$date).toDateString();
+            return result;
+        };
+
+        this.addNewItem = function () {
+            $.post(self.endpointUrl, JSON.stringify({
+                Title: self.newItemText(),
+                Priority: self.newItemPriority(),
+                DueDate: self.newItemDue()
+            })).done(function (newTodoData) {
+                         self.items.push(newTodoData);
+                         self.newItemText('');
+                         self.newItemPriority(1);
+                         self.newItemDue('');
+                     });
+        };
+        this.newItemKeypress = function (d, e) {
+            if (e.which == 13) {
+                self.addNewItem();
+            }
+        };
+        this.deleteItem = function (item) {
+            $.ajax({
+                url: self.endpointUrl,
+                data: JSON.stringify(item),
+                type: 'DELETE',
+                contentType: 'application/json'
+            }).done(function () {
+                self.items.remove(item);
+            });
+        };
+        this.load = function () {
+            $.getJSON(self.endpointUrl)
+               .done(function (data) {
+                   if (data == null) return;
+                   self.items(data);
+               });
+        };
+
+        this.load();
+    }
+
+    ko.applyBindings(new ViewModel());
+</script>

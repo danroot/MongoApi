@@ -1,10 +1,14 @@
 ﻿using System;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace MongoApi.Web.Controllers
 {
 
     public class Todo
     {
+        [BsonId]
+        public string Id { get; set; }
         public string Title { get; set; }
         public string Username { get; set; }
         public int Priority { get; set; }
@@ -20,7 +24,8 @@ namespace MongoApi.Web.Controllers
                 .WithConnectionString("mongoapidemo")
                 .Allow("*")
                 .WithUserFilter(() => User.Identity.Name)
-                .BeforeAdd(x=>x.CreatedDateUtc = DateTime.UtcNow);
+                .BeforeAdd(x=>
+                    x.CreatedDateUtc = DateTime.UtcNow);
         }
     }
 }

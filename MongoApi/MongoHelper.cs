@@ -43,10 +43,10 @@ namespace MongoApi
         public static BsonDocument ToBsonDocumentFromClientJson(this string value)
         {
             var bson = BsonDocument.Parse(value);
-            if (bson.Contains("_id"))
-            {
-                bson["_id"] = new ObjectId(bson["_id"].ToString());
-            }
+            //if (bson.Contains("_id"))
+            //{
+            //    bson["_id"] = new ObjectId(bson["_id"].ToString());
+            //}
             return bson;
         }
 
