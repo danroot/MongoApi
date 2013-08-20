@@ -1,60 +1,74 @@
-﻿
-        @Html.ActionLink("Home","Index")
-        <h1>Simple typed user-constrained todo list (jQuery)</h1>
-        <p>
-            This page illustrates a simple todo list against an typed MongoDB Api that
+﻿@Html.ActionLink("Home", "Index")
+<h1>Simple typed user-constrained todo list (jQuery)</h1>
+<p>
+    This page illustrates a simple todo list against a static-typed MongoDB Api that
             is constrained so that only items for the current authenticated user (@User.Identity.Name) are exposed, and all inserted and updated
             items are for the current user.  jQuery is used as the javascript framework.
-        </p>
-        <div>
-            <input type="text" id="uiNewTodo" placeholder="Todo item"/>
-            <ul id="uiTodoItems">            
-            </ul>
-        </div>
-        <script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
-        <script type="text/javascript">
-            var endpointUrl = '@(Url.Content("~"))typed/todos';
-            function deleteTodo(element) {
-                var jqElement = $(element);
-                var todoItem = jqElement.data();
-                $.ajax({                                    
-                    url: endpointUrl,
-                    data: JSON.stringify(todoItem),
-                    type: 'DELETE',
-                    contentType: 'application/json'
-                }).done(function() {
-                    jqElement.remove();
-                });
-            }
-        
-            function addTodoElement(todoItem) {
-                $('<li>' + todoItem.Title + '</li>')
-                    .appendTo('#uiTodoItems')
-                    .data(todoItem)
-                    .click(function () { deleteTodo(this); });
-            }
-        
-            $(function () {
-                $newTodo = $('#uiNewTodo');
-                $newTodo.keydown(function(e) {
-                    if (e.which == 13) {
-                        e.preventDefault();
-                        var newTodoText = $newTodo.val();
-                        $.post(endpointUrl, JSON.stringify({ Title: newTodoText }))
-                            .done(function (newTodoData) {
-                                addTodoElement(newTodoData);
-                            
-                                $newTodo.val('');
-                            });                  
-                    }
-                });
+</p>
+<div>
+    <input type="text" id="uiNewTodo" placeholder="Todo item" />
+    <input type="text" id="uiNewTodoPriority" placeholder="Priority" value="1" />
+    <input type="date" id="uiNewTodoDue" placeholder="Due date" />
+    <ul id="uiTodoItems">
+    </ul>
+</div>
+<script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+<script type="text/javascript">
+    var endpointUrl = '@(Url.Content("~"))typed/todos';
+    function deleteTodo(element) {
+        var jqElement = $(element);
+        var todoItem = jqElement.data();
+        $.ajax({
+            url: endpointUrl,
+            data: JSON.stringify(todoItem),
+            type: 'DELETE',
+            contentType: 'application/json'
+        }).done(function () {
+            jqElement.remove();
+        });
+    }
 
-                $.getJSON(endpointUrl)
-                    .done(function (data) {
-                        if (data == null) return;
-                        for (var i = 0; i < data.length; i++) {                   
-                            addTodoElement(data[i]);
-                        }
-                    });
+    function addTodoElement(todoItem) {
+        var dateString = '';
+        if (todoItem.DueDate != null) dateString = new Date(todoItem.DueDate.$date).toDateString();
+        $('<li>' +todoItem.Priority + ' ' + todoItem.Title + ' - ' + dateString + '</li>')
+            .appendTo('#uiTodoItems')
+            .data(todoItem)
+            .click(function () { deleteTodo(this); });
+    }
+
+    function addTodoItem() {
+        $newTodo = $('#uiNewTodo');
+        $newTodoPriority = $('#uiNewTodoPriority');
+        $newTodoDue = $('#uiNewTodoDue');
+        var newTodoText = $newTodo.val();
+        var newTodoPriority = $newTodoPriority.val();
+        var newTodoDue = $newTodoDue.val();
+        $.post(endpointUrl, JSON.stringify({ Title: newTodoText, DueDate: newTodoDue, Priority: newTodoPriority }))
+            .done(function (newTodoData) {
+                addTodoElement(newTodoData);
+                $newTodoDue.val('');
+                $newTodoPriority.val('1');
+                $newTodo.val('');
             });
-        </script>
+    }
+    function textBoxKeydown(e) {
+        if (e.which == 13) {
+            e.preventDefault();
+            addTodoItem();
+        }
+    }
+    $(function () {
+        $('#uiNewTodo').keydown(textBoxKeydown);
+        $('#uiNewTodoDue').keydown(textBoxKeydown);
+        $('#uiNewTodoPriority').keydown(textBoxKeydown);
+
+        $.getJSON(endpointUrl + '?sort={DueDate:1,Priority:1}')
+            .done(function (data) {
+                if (data == null) return;
+                for (var i = 0; i < data.length; i++) {
+                    addTodoElement(data[i]);
+                }
+            });
+    });
+</script>

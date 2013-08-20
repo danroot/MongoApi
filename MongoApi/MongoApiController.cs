@@ -7,6 +7,7 @@ using System.Security;
 using System.Threading;
 using System.Web.Mvc;
 using MongoDB.Bson;
+using MongoDB.Bson.IO;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
 
@@ -18,6 +19,10 @@ namespace MongoApi
         //TODO: add pre and post db events to allow controlling access, validation, etc.
         private readonly IList<MongoApiConfigurationBase> configurations = new List<MongoApiConfigurationBase>();
 
+        private JsonWriterSettings jsonSettings = new JsonWriterSettings()
+        {
+            OutputMode = JsonOutputMode.Strict
+        };
 
         public MongoCollection<BsonDocument> GetCollectionForRequest(string database, string collection)
         {
@@ -103,13 +108,15 @@ namespace MongoApi
                 var intlimit = int.Parse(limit);
                 if (intlimit > 0) data = data.SetLimit(int.Parse(limit));
             }
+
+            var dataAsJson = data.ToJson(jsonSettings);
             if (inlineCount.HasValue && inlineCount.Value == true)
             {
-                result = "{count:" + count + ", data: " + data.ToClientJson() + "}";
+                result = "{count:" + count + ", data: " + dataAsJson + "}";
             }
             else
             {
-                result = data.ToClientJson(); //TODO: when typed, use typed ToJSON
+                result = dataAsJson; //TODO: when typed, use typed ToJSON
             }
 
             return Content(result, "application/json");
@@ -149,7 +156,7 @@ namespace MongoApi
 
             var response = db.Save(document);
             //TODO: throw errors.
-            return Content(document.ToClientJson(), "application/json");
+            return Content(document.ToJson(jsonSettings), "application/json");
         }
 
         [HttpPut]
@@ -166,7 +173,7 @@ namespace MongoApi
             var db = GetCollectionForRequest(database, collection);
             var response = db.Update(updateQuery, new UpdateDocument(document));
             //TODO: throw errors.
-            return Content(document.ToClientJson(), "application/json");
+            return Content(document.ToJson(jsonSettings), "application/json");
         }
 
         [HttpDelete]
@@ -183,7 +190,7 @@ namespace MongoApi
             var db = GetCollectionForRequest(database, collection);
             var response = db.Remove(deleteQuery);
             //TODO: throw errors.
-            return Content(bson.ToClientJson(), "application/json");
+            return Content(bson.ToJson(jsonSettings), "application/json");
         }
 
     }

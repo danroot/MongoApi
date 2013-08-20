@@ -7,6 +7,8 @@ namespace MongoApi.Web.Controllers
     {
         public string Title { get; set; }
         public string Username { get; set; }
+        public int Priority { get; set; }
+        public DateTime DueDate { get; set; }
         public DateTime CreatedDateUtc { get; set; }
     }
 
