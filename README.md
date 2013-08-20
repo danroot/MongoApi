@@ -7,21 +7,26 @@ Note this is pre-beta, expirimental code and should not be used for production!
 
 The idea behind this project is to provide a simple RESTful proxy to MongoDB for use in ASP.NET applications.  Where possible, JSON is submitted directly to MongoDB.  Examples are provided for using the API with a variety of common javascript frameworks.  The appeal of this approach is that very little setup is necessary to build persistence for an application.  This allows the developer to focus largely on the UI and to refactor that more easily.
 
-==Simple Example==
+Simple Example
+--------------
+
 Server:
-	public class MyApiController : MongoApiController{
-		public MyApi(){
-			this.Configure("demodb","todos")
-			    .Allow("*");
-		}	
-	}
+
+>	public class MyApiController : MongoApiController{
+>		public MyApi(){
+>			this.Configure("demodb","todos")
+>			    .Allow("*");
+>		}	
+>	}
 
 RouteConfig.cs:
-        routes.MapMongoApiRoute("db", "demo", "MyApi");
+
+>        routes.MapMongoApiRoute("db", "demo", "MyApi");
 
 Client:
-        $.getJSON('/db/todos',function(data){ ... });
-        $.post('/db/todos', JSON.stringify({ Title: 'example'}));
+
+>        $.getJSON('/db/todos',function(data){ ... });
+>        $.post('/db/todos', JSON.stringify({ Title: 'example'}));
 
 
 
