@@ -12,12 +12,12 @@ Simple Example
 
 Server:
 
->	public class MyApiController : MongoApiController{
+>	 public class MyApiController : MongoApiController{
 >		public MyApi(){
 >			this.Configure("demodb","todos")
 >			    .Allow("*");
 >		}	
->	}
+>	 }
 
 RouteConfig.cs:
 
