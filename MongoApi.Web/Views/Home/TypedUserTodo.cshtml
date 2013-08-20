@@ -1,0 +1,60 @@
+﻿
+        @Html.ActionLink("Home","Index")
+        <h1>Simple typed user-constrained todo list (jQuery)</h1>
+        <p>
+            This page illustrates a simple todo list against an typed MongoDB Api that
+            is constrained so that only items for the current authenticated user (@User.Identity.Name) are exposed, and all inserted and updated
+            items are for the current user.  jQuery is used as the javascript framework.
+        </p>
+        <div>
+            <input type="text" id="uiNewTodo" placeholder="Todo item"/>
+            <ul id="uiTodoItems">            
+            </ul>
+        </div>
+        <script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+        <script type="text/javascript">
+            var endpointUrl = '@(Url.Content("~"))typed/todos';
+            function deleteTodo(element) {
+                var jqElement = $(element);
+                var todoItem = jqElement.data();
+                $.ajax({                                    
+                    url: endpointUrl,
+                    data: JSON.stringify(todoItem),
+                    type: 'DELETE',
+                    contentType: 'application/json'
+                }).done(function() {
+                    jqElement.remove();
+                });
+            }
+        
+            function addTodoElement(todoItem) {
+                $('<li>' + todoItem.Title + '</li>')
+                    .appendTo('#uiTodoItems')
+                    .data(todoItem)
+                    .click(function () { deleteTodo(this); });
+            }
+        
+            $(function () {
+                $newTodo = $('#uiNewTodo');
+                $newTodo.keydown(function(e) {
+                    if (e.which == 13) {
+                        e.preventDefault();
+                        var newTodoText = $newTodo.val();
+                        $.post(endpointUrl, JSON.stringify({ Title: newTodoText }))
+                            .done(function (newTodoData) {
+                                addTodoElement(newTodoData);
+                            
+                                $newTodo.val('');
+                            });                  
+                    }
+                });
+
+                $.getJSON(endpointUrl)
+                    .done(function (data) {
+                        if (data == null) return;
+                        for (var i = 0; i < data.length; i++) {                   
+                            addTodoElement(data[i]);
+                        }
+                    });
+            });
+        </script>

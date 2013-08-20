@@ -13,6 +13,7 @@ namespace MongoApi.Web
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
             routes.MapMongoApiRoute("db", "demo", "SimpleUntypedDemoApi");
+            routes.MapMongoApiRoute("typed", "typed", "SimpleTypedDemoApi");
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",

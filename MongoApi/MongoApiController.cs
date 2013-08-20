@@ -16,7 +16,7 @@ namespace MongoApi
     {
          
         //TODO: add pre and post db events to allow controlling access, validation, etc.
-        private readonly IList<MongoApiConfiguration> configurations = new List<MongoApiConfiguration>();
+        private readonly IList<MongoApiConfigurationBase> configurations = new List<MongoApiConfigurationBase>();
 
 
         public MongoCollection<BsonDocument> GetCollectionForRequest(string database, string collection)
@@ -27,15 +27,25 @@ namespace MongoApi
             return new MongoClient(config.ConnectionString).GetServer().GetDatabase(database).GetCollection(collection);
         }
 
-        public MongoApiConfiguration Configure(string database, string collection)
+        public MongoApiConfiguration<BsonDocument> Configure(string database, string collection)
         {
-            var result = new MongoApiConfiguration();
+            var result = new MongoApiConfiguration<BsonDocument>();
             result.Database = database;
             result.Collection = collection;
             result.WithConnectionString("mongoapi");
             configurations.Add(result);
             return result;
         }
+        public MongoApiConfiguration<T> Configure<T>(string database, string collection) where T : class
+        {
+            var result = new MongoApiConfiguration<T>();
+            result.Database = database;
+            result.Collection = collection;
+            result.WithConnectionString("mongoapi");
+            configurations.Add(result);
+            return result;
+        }
+
 
         private bool IsAllowedOperation(string database, string collection, string operation)
         {
@@ -48,7 +58,7 @@ namespace MongoApi
                         (x.AllowedOperations.Contains("*") || x.AllowedOperations.Contains(operation, StringComparer.CurrentCultureIgnoreCase)));
         }
 
-        private IEnumerable<MongoApiConfiguration> GetConfigurations(string database, string collection)
+        private IEnumerable<MongoApiConfigurationBase> GetConfigurations(string database, string collection)
         {
             
             return
@@ -99,7 +109,7 @@ namespace MongoApi
             }
             else
             {
-                result = data.ToClientJson();
+                result = data.ToClientJson(); //TODO: when typed, use typed ToJSON
             }
 
             return Content(result, "application/json");
@@ -107,21 +117,22 @@ namespace MongoApi
 
         private IMongoQuery ApplyDataFilter(string database, string collection, IMongoQuery queryDocument)
         {
-            var dataFilters = this.GetConfigurations(database, collection).Select(x => x.DataFilter);
-            foreach (var dataFilter in dataFilters)
+            var configs = this.GetConfigurations(database, collection);
+            foreach (var config in configs)
             {
-                queryDocument = dataFilter(queryDocument);
+                queryDocument = config.ApplyDataFilters(queryDocument);
             }
             return queryDocument;
         }
 
-        private void ApplyInterceptsFor(string database, string collection, string operation, BsonDocument document)
+        private BsonDocument ApplyInterceptsFor(string database, string collection, string operation, BsonDocument document)
         {
-            var intercepts = this.GetConfigurations(database, collection).Select(x => x.GetInterceptFor(operation));
-            foreach (var intercept in intercepts.Where(intercept => intercept != null))
+            var configs = this.GetConfigurations(database, collection);
+            foreach (var config in configs)
             {
-                intercept(document);
+                document = config.ApplyInterceptsFor(operation,document);
             }
+            return document;
         }
 
         [HttpPost]
@@ -132,7 +143,7 @@ namespace MongoApi
 
             var document = Request.GetSubmittedBsonDocument();
 
-            ApplyInterceptsFor(database, collection, "add", document);
+            document = ApplyInterceptsFor(database, collection, "add", document);
 
             var db = GetCollectionForRequest(database, collection);
 
@@ -148,7 +159,7 @@ namespace MongoApi
             if (!IsAllowedOperation(database, collection, "update")) throw new SecurityException("Update is not allowed for this database and collection.  A developer should explicity allow this by calling this.Allow in the constructor.");
 
             var document = Request.GetSubmittedBsonDocument();
-            ApplyInterceptsFor(database, collection, "update", document);
+            document = ApplyInterceptsFor(database, collection, "update", document);
             //TODO: allow "update where" instead of just "update one"
             var updateQuery = Query.EQ("_id", document["_id"]);
             updateQuery = ApplyDataFilter(database, collection, updateQuery);
@@ -166,7 +177,7 @@ namespace MongoApi
             var document = query;
             if (String.IsNullOrEmpty(query)) document = Request.GetAllRequestContent();
             var bson = document.ToBsonDocumentFromClientJson();
-            ApplyInterceptsFor(database, collection, "delete", bson);
+            bson = ApplyInterceptsFor(database, collection, "delete", bson);
             IMongoQuery deleteQuery = new QueryDocument(bson);
             deleteQuery = ApplyDataFilter(database, collection, deleteQuery);
             var db = GetCollectionForRequest(database, collection);

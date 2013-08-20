@@ -31,5 +31,21 @@ namespace MongoApi.Web.Controllers
         {
             return View();
         }
+
+
+        public ActionResult TypedUserTodo()
+        {
+            return View();
+        }
+
+        public ActionResult TypedUserTodoKo()
+        {
+            return View();
+        }
+
+        public ActionResult TypedUserTodoNg()
+        {
+            return View();
+        }
     }
 }

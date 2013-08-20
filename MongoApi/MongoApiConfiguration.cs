@@ -2,16 +2,32 @@
 using System.Collections.Generic;
 using System.Configuration;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using MongoDB.Driver.Builders;
 
 namespace MongoApi
 {
-    public class MongoApiConfiguration
+    public abstract class MongoApiConfigurationBase
+    {
+        public string ConnectionString { get; set; }
+        public string Database { get; set; }
+        public string Collection { get; set; }
+        public IEnumerable<string> AllowedOperations { get; set; }
+
+        public abstract BsonDocument ApplyInterceptsFor(string operation, BsonDocument document);
+
+
+        public abstract IMongoQuery ApplyDataFilters(IMongoQuery query);
+
+    }
+
+    public class MongoApiConfiguration<T> : MongoApiConfigurationBase where T : class
     {
         public MongoApiConfiguration()
         {
-            this.Intercepts = new Dictionary<string, Action<BsonDocument>>();
+            this.Intercepts = new Dictionary<string, Action<T>>();
+            this.BsonIntercepts = new Dictionary<string, Action<BsonDocument>>();
             this.DataFilter = x => x;
         }
         //TODO: allow strongly typed option
@@ -20,16 +36,14 @@ namespace MongoApi
         //Done: dont require database name in route url
         //TODO: allow config of connection string
         //TODO: OnAnyRequest intercept to do custom security, etc.
-       
 
-        public string ConnectionString { get; set; }
-        public string Database { get; set; }
-        public string Collection { get; set; }
-        public IEnumerable<string> AllowedOperations { get; set; }
+
+
         public Func<IMongoQuery, IMongoQuery> DataFilter { get; set; }
-        public Dictionary<string, Action<BsonDocument>> Intercepts { get; set; }
+        public Dictionary<string, Action<T>> Intercepts { get; set; }
+        public Dictionary<string, Action<BsonDocument>> BsonIntercepts { get; set; }
 
-        public MongoApiConfiguration WithConnectionString(string connection)
+        public MongoApiConfiguration<T> WithConnectionString(string connection)
         {
             var config = ConfigurationManager.ConnectionStrings[connection];
             if (config == null) return this;
@@ -43,17 +57,17 @@ namespace MongoApi
         /// </summary>
         /// <param name="getUsername"></param>
         /// <returns></returns>
-        public MongoApiConfiguration WithUserFilter(Func<string> getUsername)
+        public MongoApiConfiguration<T> WithUserFilter(Func<string> getUsername)
         {
-           
+
 
 
             this.WithDataFilter(x => Query.And(x, Query.EQ("Username", getUsername())))
-                .BeforeAdd(x => x["Username"] = getUsername())
-                .BeforeUpdate(x => x["Username"] = getUsername())
-                .BeforeDelete(x =>
+                .BeforeAddBson(x => x["Username"] = getUsername())
+                .BeforeUpdateBson(x => x["Username"] = getUsername())
+                .BeforeDeleteBson(x =>
                 {
-                    // if(x["Title"].ToString().StartsWith("T")) throw new InvalidOperationException("Can't delete things that start with T.");
+                    //TODO: already limited by data filter.  also throw here?
                 });
             return this;
         }
@@ -63,18 +77,21 @@ namespace MongoApi
         /// </summary>
         /// <param name="filter"></param>
         /// <returns></returns>
-        public MongoApiConfiguration WithDataFilter(Func<IMongoQuery, IMongoQuery> filter)
+        public MongoApiConfiguration<T> WithDataFilter(Func<IMongoQuery, IMongoQuery> filter)
         {
+
             this.DataFilter = filter;
             return this;
         }
+
+
 
         /// <summary>
         /// Allows read, add, update, delete or * operations for this collection.
         /// </summary>
         /// <param name="operations"></param>
         /// <returns></returns>
-        public MongoApiConfiguration Allow(params string[] operations)
+        public MongoApiConfiguration<T> Allow(params string[] operations)
         {
             this.AllowedOperations = operations;
             return this;
@@ -85,20 +102,29 @@ namespace MongoApi
         /// </summary>
         /// <param name="intercept"></param>
         /// <returns></returns>
-        public MongoApiConfiguration BeforeAdd(Action<BsonDocument> intercept)
+        public MongoApiConfiguration<T> BeforeAdd(Action<T> intercept)
         {
             this.Intercepts.Add("add", intercept);
             return this;
         }
-
+        public MongoApiConfiguration<T> BeforeAddBson(Action<BsonDocument> intercept)
+        {
+            this.BsonIntercepts.Add("add", intercept);
+            return this;
+        }
         /// <summary>
         /// Fires before updates, to allow modifying all updated data or applying logic and security constraints.
         /// </summary>
         /// <param name="intercept"></param>
         /// <returns></returns>
-        public MongoApiConfiguration BeforeUpdate(Action<BsonDocument> intercept)
+        public MongoApiConfiguration<T> BeforeUpdate(Action<T> intercept)
         {
             this.Intercepts.Add("update", intercept);
+            return this;
+        }
+        public MongoApiConfiguration<T> BeforeUpdateBson(Action<BsonDocument> intercept)
+        {
+            this.BsonIntercepts.Add("update", intercept);
             return this;
         }
 
@@ -107,17 +133,47 @@ namespace MongoApi
         /// </summary>
         /// <param name="intercept"></param>
         /// <returns></returns>
-        public MongoApiConfiguration BeforeDelete(Action<BsonDocument> intercept)
+        public MongoApiConfiguration<T> BeforeDelete(Action<T> intercept)
         {
             this.Intercepts.Add("delete", intercept);
             return this;
         }
-
-        public Action<BsonDocument> GetInterceptFor(string operation)
+        public MongoApiConfiguration<T> BeforeDeleteBson(Action<BsonDocument> intercept)
         {
-            return Intercepts.ContainsKey(operation) ? Intercepts[operation] : null;
+            this.BsonIntercepts.Add("delete", intercept);
+            return this;
         }
 
+        public override BsonDocument ApplyInterceptsFor(string operation, BsonDocument document)
+        {
+            //TODO: mod to allow multiple intercepts.
+            var bsonIntercepts = BsonIntercepts.ContainsKey(operation) ? BsonIntercepts[operation] : null;
+            var typedIntercepts = Intercepts.ContainsKey(operation) ? Intercepts[operation] : null;
+            if (typeof(T) == typeof(BsonDocument))
+            {
+                if (bsonIntercepts != null) bsonIntercepts.Invoke(document);
+                if (typedIntercepts != null) typedIntercepts.Invoke(document as T);
+            }
+            else
+            {
 
+                if (bsonIntercepts != null) bsonIntercepts.Invoke(document);
+                if (typedIntercepts != null)
+                {
+                    var instance = BsonSerializer.Deserialize<T>(document);
+
+                    typedIntercepts.Invoke(instance);
+                    document = instance.ToBsonDocument();
+                }
+            }
+            return document;
+        }
+
+        public override IMongoQuery ApplyDataFilters(IMongoQuery query)
+        {
+            if (this.DataFilter == null) return query;
+            //TODO: strong-type query...
+            return this.DataFilter.Invoke(query);
+        }
     }
 }
