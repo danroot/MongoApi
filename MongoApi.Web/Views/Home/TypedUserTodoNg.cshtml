@@ -1,0 +1,75 @@
+﻿@Html.ActionLink("Home", "Index")
+<h1>Simple typed user-constrained todo list (AngularJS)</h1>
+<p>
+    This page illustrates a simple todo list against a typed MongoDB Api that
+            is constrained so that only items for the current authenticated user (@User.Identity.Name) are exposed, and all inserted and updated
+            items are for the current user.  AngularJS is used as the binding and ajax framework.
+</p>
+<div data-ng-app="myApp" data-ng-controller="TodoCtrl">
+    <input type="text" placeholder="Todo item" on-enter="add()" data-ng-model="newItemText" />
+    <input type="text" placeholder="Priority" on-enter="add()" data-ng-model="newItemPriority" />
+    <input type="date" on-enter="add()" data-ng-model="newItemDue" />
+    <ul id="uiTodoItems">
+        <li data-ng-repeat="item in items" data-ng-click="delete(item,$index)">
+            {{item.Priority}} - {{item.Title}} - {{dateOrEmpty(item.DueDate)}}
+        </li>
+    </ul>
+</div>
+
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+<script type="text/javascript">
+    var app = angular.module('myApp', []);
+    //keyup is coming in future versions, but currently requires jquery.
+    app.directive('onEnter', function () {
+        return function (scope, elm, attrs) {           
+            elm.bind("keyup", function (evt) {    
+                if (evt.which == 13) {
+                    scope.$apply(attrs.onEnter);
+                }
+            });
+        };
+    });
+
+    function TodoCtrl($scope, $http) {
+        $scope.endpointUrl = '@(Url.Content("~"))typed/todos';
+        $scope.items = [];
+        $scope.newItemText = '';
+        $scope.newItemPriority = 1;
+        $scope.newItemDue = '';
+        $scope.dateOrEmpty = function(dateValue) {
+            if (dateValue == null) return '';
+            if (dateValue.$date == null) return '';
+            return new Date(dateValue.$date).toDateString();
+        }
+        $scope.add = function () {
+            $http.post($scope.endpointUrl, JSON.stringify({
+                Title: $scope.newItemText,
+                Priority: $scope.newItemPriority,
+                DueDate: $scope.newItemDue                
+            })).success(function (data) {
+                    $scope.items.push(data);
+                    $scope.newItemText = '';
+                    $scope.newItemPriority = 1;
+                    $scope.newItemDue = '';
+                });
+        };
+
+        $scope.delete = function (item, $index) {
+            delete item['$$hashKey']; //Angular adds this.  Yuck.
+            $http.delete($scope.endpointUrl, {data:JSON.stringify(item)})
+                .success(function () {
+                    $scope.items.splice($index,1);
+                });
+        };
+
+        $scope.load = function () {
+            $http.get($scope.endpointUrl)
+                .success(function (data) {
+                    $scope.items = data;
+                });
+        };
+
+
+        $scope.load();
+    }
+</script>
