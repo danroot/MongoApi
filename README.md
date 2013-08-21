@@ -80,30 +80,28 @@ can be better than
 To enable these scenarios, MongoApi allows working with both untyped data or typed classes:
 
 Server:
->    public class Todo
->    {
->        [BsonId]
->        public string Id { get; set; }
->        public string Title { get; set; }
->        public string Username { get; set; }
->        public int Priority { get; set; }
->        public DateTime DueDate { get; set; }
->        public DateTime CreatedDateUtc { get; set; }
->    }
->         
->   public class SimpleTypedDemoApiController : MongoApiController
->    {
->        public SimpleTypedDemoApiController()
->        {
->            this.Configure<Todo>("typed", "todos")
->                .Allow("*")
->                .WithUserFilter(() => User.Identity.Name)
->                .BeforeAdd(x=>
->                    x.CreatedDateUtc = DateTime.UtcNow);
->
->            
->        }
->    }
+>          public class Todo
+>          {
+>              [BsonId]
+>              public string Id { get; set; }
+>              public string Title { get; set; }
+>              public string Username { get; set; }
+>              public int Priority { get; set; }
+>              public DateTime DueDate { get; set; }
+>              public DateTime CreatedDateUtc { get; set; }
+>          }
+>               
+>         public class SimpleTypedDemoApiController : MongoApiController
+>          {
+>              public SimpleTypedDemoApiController()
+>              {
+>                  this.Configure<Todo>("typed", "todos")
+>                      .Allow("*")
+>                      .WithUserFilter(() => User.Identity.Name)
+>                      .BeforeAdd(x=>
+>                          x.CreatedDateUtc = DateTime.UtcNow);
+>               }
+>          }
 
 RouteConfig.cs:
 
@@ -112,7 +110,8 @@ RouteConfig.cs:
 Client:
 
 >        $.getJSON('/typed/todos',function(data){ ... });
->        $.post('/typed/todos', JSON.stringify({ Title: 'example', Priority:1, DueDate: new Date()}));
+>        $.post('/typed/todos', JSON.stringify({ Title: 'example', 
+>                      Priority:1, DueDate: new Date()}));
 
 
 
