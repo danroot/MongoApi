@@ -109,7 +109,9 @@ namespace MongoApi
                 if (intlimit > 0) data = data.SetLimit(int.Parse(limit));
             }
 
+            //TODO: consider returning json based on type for typed api.  Otherwise there is disconnect between typical inserted JSON and typical JSON returned here.
             var dataAsJson = data.ToJson(jsonSettings);
+
             if (inlineCount.HasValue && inlineCount.Value == true)
             {
                 result = "{count:" + count + ", data: " + dataAsJson + "}";
